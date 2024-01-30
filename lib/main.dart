@@ -13,19 +13,24 @@ void main() {
   runApp(
     MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(useMaterial3: true),
-      home: const MapApp(),
+      theme: ThemeData(
+        appBarTheme: AppBarTheme(
+          backgroundColor: ColorScheme.dark().background,
+          foregroundColor: ColorScheme.dark().onBackground,
+        ),
+      ),
+      home: const BusApp(),
     ),
   );
 }
 
-class MapApp extends StatefulWidget {
-  const MapApp({super.key});
+class BusApp extends StatefulWidget {
+  const BusApp({super.key});
   @override
-  _MapAppState createState() => _MapAppState();
+  _BusAppState createState() => _BusAppState();
 }
 
-class _MapAppState extends State<MapApp> {
+class _BusAppState extends State<BusApp> {
   late AlignOnUpdate _alignPositionOnUpdate;
   late StreamController<double?> _alignPositionStreamController;
   late bool _hasChangedPosition;
@@ -53,9 +58,7 @@ class _MapAppState extends State<MapApp> {
     var converter = LatLongConverter();
     return Scaffold(
       appBar: AppBar(
-        title: Text('MapApp'),
-        backgroundColor: ColorScheme.dark().background,
-        foregroundColor: ColorScheme.dark().onBackground,
+        title: Text('BusApp'),
       ),
       body: FlutterMap(
         mapController: MapController(),
@@ -100,7 +103,7 @@ class _MapAppState extends State<MapApp> {
         children: [
           TileLayer(
             urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-            userAgentPackageName: 'org.billthefarmer.map',
+            userAgentPackageName: 'org.billthefarmer.busapp',
           ),
           CurrentLocationLayer(
             alignPositionStream: _alignPositionStreamController.stream,
@@ -149,7 +152,7 @@ class _MapAppState extends State<MapApp> {
         },
         child: const Icon(
           Icons.my_location,
-          color: Colors.white,
+          color: Colors.black,
         ),
       ),
     );
