@@ -18,11 +18,31 @@ void main() {
           backgroundColor: ColorScheme.dark().background,
           foregroundColor: ColorScheme.dark().onBackground,
         ),
+         // dialogBackgroundColor: ColorScheme.dark().background,
       ),
       home: const BusApp(),
     ),
   );
 }
+
+const MULTI_FORMAT =
+'https://nextbuses.mobi/WebView/BusStopSearch/BusStopSearchResults' +
+'?id=%s&submit=Search';
+const SINGLE_FORMAT =
+'https://nextbuses.mobi/WebView/BusStopSearch/BusStopSearchResults/' +
+'%s?currentPage=0';
+const QUERY_FORMAT = 'point(%f,%f)';
+const STOP_FORMAT = '%s, %s';
+const URL_FORMAT = 'https://nextbuses.mobi%s';
+const BUS_FORMAT = '%s: %s';
+
+const POINT_PATTERN = r'.+POINT\(.+\).+';
+const SEARCH_PATTERN = r'.*searchMap=true.*';
+const STOP_PATTERN =
+r'((nld|man|lin|bou|ahl|her|buc|shr|dvn|rtl|mer|twr|nth|cor|war|ntm|' +
+r'sta|bfs|nts|cum|sto|blp|wil|che|dor|knt|glo|woc|oxf|brk|chw|wok|' +
+r'dbs|yny|dur|soa|dby|tel|crm|sot|wsx|lan|esu|lec|suf|esx|nwm|dlo|' +
+r'lei|mlt|cej|hal|ham|sur|hrt)[a-z]{5})|[0-9]{8}';
 
 class BusApp extends StatefulWidget {
   const BusApp({super.key});
@@ -36,6 +56,7 @@ class _BusAppState extends State<BusApp> {
   late bool _hasChangedPosition;
   late String _leftText;
   late String _rightText;
+  late bool _busy;
 
   @override
   void initState() {
@@ -45,6 +66,7 @@ class _BusAppState extends State<BusApp> {
     _hasChangedPosition = false;
     _leftText = '';
     _rightText= '';
+    _busy = false;
   }
 
   @override
@@ -68,14 +90,10 @@ class _BusAppState extends State<BusApp> {
             ),
           initialCenter: LatLng(52.561928, -1.464854),
           initialZoom: 6.5,
-          onTap: (tapPosition, point) {
-            var osref = converter.getOSGBfromDec(
-              point.latitude, point.longitude);
-            print('point $point, ${osref.letterRef}');
-          },
+          onTap: (tapPosition, point) => busesFromPoint(tapPosition, point),
           // Stop following the location marker on the map if user interacted
           // with the map.
-          onPositionChanged: (MapPosition position, bool hasGesture) {
+          onPositionChanged: (MapPosition position, bool hasGesture) async {
             if (hasGesture &&
               _alignPositionOnUpdate != AlignOnUpdate.never) {
               setState(() =>
@@ -92,10 +110,10 @@ class _BusAppState extends State<BusApp> {
               var lng = position.center!.longitude;
               var osref = converter.getOSGBfromDec(lat, lng);
               setState(() =>
-                _rightText = sprintf('%2.5f, %2.5f', [lat, lng])
+                _leftText = '${osref. letterRef}'
               );
               setState(() =>
-                _leftText = '${osref. letterRef}'
+                _rightText = sprintf('%2.5f, %2.5f', [lat, lng])
               );
             }
           },
@@ -137,6 +155,10 @@ class _BusAppState extends State<BusApp> {
               ),
             ),
           ),
+          if (_busy)
+          Center(
+            child: CircularProgressIndicator(),
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -156,5 +178,69 @@ class _BusAppState extends State<BusApp> {
         ),
       ),
     );
+  }
+
+  void busesFromPoint(TapPosition tapPosition, LatLng point) async {
+    setState(() => _busy = true );
+    final query = sprintf(QUERY_FORMAT,
+      [point.latitude, point.longitude]);
+    var url = sprintf(MULTI_FORMAT, [query]);
+    var response = await http.get(Uri.parse(url));
+    if (response.statusCode == 200) {
+      try {
+        var bs = BeautifulSoup(response.body);
+        final table = bs!.body!.table;
+        final td = table!.find('td');
+        final a = td!.p!.a;
+        final href = a!.getAttrValue('href');
+        url = sprintf(URL_FORMAT, [href]);
+        response = await http.get(Uri.parse(url));
+        if (response.statusCode == 200) {
+          bs = BeautifulSoup(response.body);
+          final table = bs!.body!.table;
+          final list = <Widget>[];
+          final trs = table!.findAll('tr');
+          for (final tr in trs) {
+            var td = tr.find('td');
+            final bus = td!.a!.text;
+            td = td.nextSibling;
+            final dest = td!.p!.text;
+            list.add(SimpleDialogOption(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: Text(sprintf(BUS_FORMAT, [bus, dest]),
+                  style: Theme.of(context).textTheme.bodyLarge,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 2,
+                ),
+            ));
+          }
+          // print(list);
+          setState(() => _busy = false );
+          showDialog<void>(
+            context: context,
+            builder: (BuildContext context) {
+              return SimpleDialog(
+                title: Text(bs!.body!.h2!.text,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 2,
+                ),
+                children: list,
+                // contentPadding: const EdgeInsets.all(24),
+              );
+            }
+          );
+        }
+      }
+
+      catch (e, s) {
+        print(e);
+        print(s);
+      }
+    }
+  }
+
+  void busesFromStop(String stop) {
   }
 }
