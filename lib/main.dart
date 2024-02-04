@@ -18,7 +18,6 @@ void main() {
           backgroundColor: ColorScheme.dark().background,
           foregroundColor: ColorScheme.dark().onBackground,
         ),
-         // dialogBackgroundColor: ColorScheme.dark().background,
       ),
       home: const BusApp(),
     ),
@@ -90,6 +89,7 @@ class _BusAppState extends State<BusApp> {
             ),
           initialCenter: LatLng(52.561928, -1.464854),
           initialZoom: 6.5,
+          // Buses from nearest stop
           onTap: (tapPosition, point) => busesFromPoint(tapPosition, point),
           // Stop following the location marker on the map if user interacted
           // with the map.
@@ -156,9 +156,9 @@ class _BusAppState extends State<BusApp> {
             ),
           ),
           if (_busy)
-          Center(
-            child: CircularProgressIndicator(),
-          ),
+            Center(
+              child: CircularProgressIndicator(),
+            ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -210,27 +210,15 @@ class _BusAppState extends State<BusApp> {
                   Navigator.pop(context);
                 },
                 child: Text(sprintf(BUS_FORMAT, [bus, dest]),
-                  style: Theme.of(context).textTheme.bodyLarge,
+                  style: Theme.of(context).textTheme.bodyLarge!
+                  .apply(color: ColorScheme.dark().onBackground),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 2,
                 ),
             ));
           }
-          // print(list);
           setState(() => _busy = false );
-          showDialog<void>(
-            context: context,
-            builder: (BuildContext context) {
-              return SimpleDialog(
-                title: Text(bs!.body!.h2!.text,
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 2,
-                ),
-                children: list,
-                // contentPadding: const EdgeInsets.all(24),
-              );
-            }
-          );
+          showBuses(bs!.body!.h2!.text, list);
         }
       }
 
@@ -241,6 +229,31 @@ class _BusAppState extends State<BusApp> {
     }
   }
 
-  void busesFromStop(String stop) {
+  void showBuses(String title, List<Widget> list) {
+    showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            dialogTheme: DialogTheme.of(context).copyWith(
+              backgroundColor: ColorScheme.dark().background,
+              titleTextStyle: Theme.of(context).textTheme.headlineSmall!
+              .copyWith(
+                color: ColorScheme.dark().onBackground),
+            ),
+          ),
+          child: SimpleDialog(
+            title: Text(title,
+              overflow: TextOverflow.ellipsis,
+              maxLines: 2,
+            ),
+            children: list,
+          ),
+        );
+      }
+    );
+  }
+
+  void busesFromStop(String stop) async {
   }
 }
