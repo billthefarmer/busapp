@@ -50,11 +50,14 @@ class BusApp extends StatefulWidget {
 }
 
 class _BusAppState extends State<BusApp> {
-  late AlignOnUpdate _alignPositionOnUpdate;
   late StreamController<double?> _alignPositionStreamController;
+  late AlignOnUpdate _alignPositionOnUpdate;
+  late TextEditingController _controller;
   late bool _hasChangedPosition;
   late String _leftText;
   late String _rightText;
+  late bool _searching;
+  late bool _empty;
   late bool _busy;
 
   @override
@@ -62,9 +65,12 @@ class _BusAppState extends State<BusApp> {
     super.initState();
     _alignPositionOnUpdate = AlignOnUpdate.always;
     _alignPositionStreamController = StreamController<double?>();
+    _controller = TextEditingController();
     _hasChangedPosition = false;
     _leftText = '';
     _rightText= '';
+    _searching = false;
+    _empty = true;
     _busy = false;
   }
 
@@ -80,6 +86,72 @@ class _BusAppState extends State<BusApp> {
     return Scaffold(
       appBar: AppBar(
         title: Text('BusApp'),
+        actions: [
+          if (_searching)
+          Expanded(
+            child: SearchBar(
+              controller: _controller,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () {
+                  setState(() =>
+                    _searching = false
+                  );
+                }
+              ),
+              trailing: [
+                if (!_empty)
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () {
+                    _controller.clear();
+                  }
+                ),
+                IconButton(
+                  icon: const Icon(Icons.arrow_forward_ios),
+                  onPressed: () {
+                    setState(() =>
+                      _searching = false
+                    );
+                  }
+                ),
+              ],
+              hintText: 'Search…',
+              onChanged: (value) {
+                setState(() =>
+                  _empty = value.isEmpty
+                );
+              },
+              onSubmitted: (value) {
+                setState(() =>
+                  _searching = false
+                );
+              },
+              backgroundColor: MaterialStatePropertyAll(
+                ColorScheme.dark().background
+              ),
+              textStyle: MaterialStatePropertyAll(
+                Theme.of(context).textTheme.bodyLarge!
+                .apply(color: ColorScheme.dark().onBackground)
+              ),
+              hintStyle: MaterialStatePropertyAll(
+                Theme.of(context).textTheme.bodyLarge!
+                .apply(color: Colors.grey)
+              ),
+              // constraints: BoxConstraints(maxWidth: 240),
+            )
+          )
+
+          else
+          IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: () {
+              setState(() =>
+                _searching = true
+              );
+            }
+          )
+        ],
       ),
       body: FlutterMap(
         mapController: MapController(),
@@ -128,11 +200,21 @@ class _BusAppState extends State<BusApp> {
             alignPositionOnUpdate: _alignPositionOnUpdate,
           ),
           Align(
+            alignment: Alignment.bottomLeft,
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Text(
+                'flutter_map',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
+          ),
+          Align(
             alignment: Alignment.bottomRight,
             child: Padding(
               padding: const EdgeInsets.all(4),
               child: Text(
-                'flutter_map | © OpenStreetMap contributors',
+                '© OpenStreetMap contributors',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ),
@@ -165,8 +247,8 @@ class _BusAppState extends State<BusApp> {
         onPressed: () {
           // Follow the location marker on the map when location updated
           // until user interact with the map.
-          setState(
-            () => _alignPositionOnUpdate = AlignOnUpdate.always,
+          setState(() =>
+            _alignPositionOnUpdate = AlignOnUpdate.always,
           );
           // Follow the location marker on the map and zoom the map to
           // level 18.
@@ -238,8 +320,7 @@ class _BusAppState extends State<BusApp> {
             dialogTheme: DialogTheme.of(context).copyWith(
               backgroundColor: ColorScheme.dark().background,
               titleTextStyle: Theme.of(context).textTheme.headlineSmall!
-              .copyWith(
-                color: ColorScheme.dark().onBackground),
+              .apply(color: ColorScheme.dark().onBackground),
             ),
           ),
           child: SimpleDialog(
