@@ -24,25 +24,6 @@ void main() {
   );
 }
 
-const MULTI_FORMAT =
-'https://nextbuses.mobi/WebView/BusStopSearch/BusStopSearchResults' +
-'?id=%s&submit=Search';
-const SINGLE_FORMAT =
-'https://nextbuses.mobi/WebView/BusStopSearch/BusStopSearchResults/' +
-'%s?currentPage=0';
-const QUERY_FORMAT = 'point(%f,%f)';
-const STOP_FORMAT = '%s, %s';
-const URL_FORMAT = 'https://nextbuses.mobi%s';
-const BUS_FORMAT = '%s: %s';
-
-const POINT_PATTERN = r'.+POINT\(.+\).+';
-const SEARCH_PATTERN = r'.*searchMap=true.*';
-const STOP_PATTERN =
-r'((nld|man|lin|bou|ahl|her|buc|shr|dvn|rtl|mer|twr|nth|cor|war|ntm|' +
-r'sta|bfs|nts|cum|sto|blp|wil|che|dor|knt|glo|woc|oxf|brk|chw|wok|' +
-r'dbs|yny|dur|soa|dby|tel|crm|sot|wsx|lan|esu|lec|suf|esx|nwm|dlo|' +
-r'lei|mlt|cej|hal|ham|sur|hrt)[a-z]{5})|[0-9]{8}';
-
 class BusApp extends StatefulWidget {
   const BusApp({super.key});
   @override
@@ -50,6 +31,26 @@ class BusApp extends StatefulWidget {
 }
 
 class _BusAppState extends State<BusApp> {
+
+  static final MULTI_FORMAT =
+  'https://nextbuses.mobi/WebView/BusStopSearch/BusStopSearchResults' +
+  '?id=%s&submit=Search';
+  static final SINGLE_FORMAT =
+  'https://nextbuses.mobi/WebView/BusStopSearch/BusStopSearchResults/' +
+  '%s?currentPage=0';
+  static final QUERY_FORMAT = 'point(%f,%f)';
+  static final STOP_FORMAT = '%s, %s';
+  static final URL_FORMAT = 'https://nextbuses.mobi%s';
+  static final BUS_FORMAT = '%s: %s';
+
+  static final POINT_PATTERN = RegExp(r'.+POINT\(.+\).+');
+  static final SEARCH_PATTERN = RegExp(r'.*searchMap=true.*');
+  static final STOP_PATTERN = RegExp(
+    r'^((nld|man|lin|bou|ahl|her|buc|shr|dvn|rtl|mer|twr|nth|cor|war|ntm|' +
+    r'sta|bfs|nts|cum|sto|blp|wil|che|dor|knt|glo|woc|oxf|brk|chw|wok|' +
+    r'dbs|yny|dur|soa|dby|tel|crm|sot|wsx|lan|esu|lec|suf|esx|nwm|dlo|' +
+    r'lei|mlt|cej|hal|ham|sur|hrt)[a-z]{5})|[0-9]{8}$');
+
   late StreamController<double?> _alignPositionStreamController;
   late AlignOnUpdate _alignPositionOnUpdate;
   late TextEditingController _controller;
@@ -63,8 +64,8 @@ class _BusAppState extends State<BusApp> {
   @override
   void initState() {
     super.initState();
-    _alignPositionOnUpdate = AlignOnUpdate.always;
     _alignPositionStreamController = StreamController<double?>();
+    _alignPositionOnUpdate = AlignOnUpdate.always;
     _controller = TextEditingController();
     _hasChangedPosition = false;
     _leftText = '';
@@ -82,7 +83,7 @@ class _BusAppState extends State<BusApp> {
 
   @override
   Widget build(BuildContext context) {
-    var converter = LatLongConverter();
+    final converter = LatLongConverter();
     return Scaffold(
       appBar: AppBar(
         title: Text('BusApp'),
@@ -113,6 +114,9 @@ class _BusAppState extends State<BusApp> {
                     setState(() =>
                       _searching = false
                     );
+                    // Search for buses/stops
+                    doSearch(_controller.text);
+                    _controller.clear();
                   }
                 ),
               ],
@@ -126,6 +130,9 @@ class _BusAppState extends State<BusApp> {
                 setState(() =>
                   _searching = false
                 );
+                // Search for buses/stops
+                doSearch(value);
+                _controller.clear();
               },
               backgroundColor: MaterialStatePropertyAll(
                 ColorScheme.dark().background
@@ -138,7 +145,6 @@ class _BusAppState extends State<BusApp> {
                 Theme.of(context).textTheme.bodyLarge!
                 .apply(color: Colors.grey)
               ),
-              // constraints: BoxConstraints(maxWidth: 240),
             )
           )
 
@@ -267,47 +273,111 @@ class _BusAppState extends State<BusApp> {
     final query = sprintf(QUERY_FORMAT,
       [point.latitude, point.longitude]);
     var url = sprintf(MULTI_FORMAT, [query]);
-    var response = await http.get(Uri.parse(url));
-    if (response.statusCode == 200) {
-      try {
-        var bs = BeautifulSoup(response.body);
+    try {
+      var response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        final bs = BeautifulSoup(response.body);
         final table = bs!.body!.table;
         final td = table!.find('td');
         final a = td!.p!.a;
         final href = a!.getAttrValue('href');
         url = sprintf(URL_FORMAT, [href]);
-        response = await http.get(Uri.parse(url));
-        if (response.statusCode == 200) {
-          bs = BeautifulSoup(response.body);
-          final table = bs!.body!.table;
-          final list = <Widget>[];
-          final trs = table!.findAll('tr');
-          for (final tr in trs) {
-            var td = tr.find('td');
-            final bus = td!.a!.text;
-            td = td.nextSibling;
-            final dest = td!.p!.text;
-            list.add(SimpleDialogOption(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                child: Text(sprintf(BUS_FORMAT, [bus, dest]),
-                  style: Theme.of(context).textTheme.bodyLarge!
-                  .apply(color: ColorScheme.dark().onBackground),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 2,
-                ),
-            ));
-          }
-          setState(() => _busy = false );
-          showBuses(bs!.body!.h2!.text, list);
-        }
+        busesFromUrl(url);
       }
+    }
 
-      catch (e, s) {
-        print(e);
-        print(s);
+    catch (e, s) {
+      print(e);
+      print(s);
+    }
+  }
+
+  void busesFromUrl(String url) async {
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        final bs = BeautifulSoup(response.body);
+        final table = bs!.body!.table;
+        final list = <Widget>[];
+        final trs = table!.findAll('tr');
+        for (final tr in trs) {
+          var td = tr.find('td');
+          final bus = td!.a!.text;
+          td = td.nextSibling;
+          final dest = td!.p!.text;
+          list.add(SimpleDialogOption(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: Text(sprintf(BUS_FORMAT, [bus, dest]),
+                style: Theme.of(context).textTheme.bodyLarge!
+                .apply(color: ColorScheme.dark().onBackground),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 2,
+              ),
+          ));
+        }
+        setState(() => _busy = false );
+        showBuses(bs!.body!.h2!.text, list);
       }
+    }
+
+    catch (e, s) {
+      print(e);
+      print(s);
+    }
+  }
+
+  void stopsFromUrl(String url) async {
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        final bs = BeautifulSoup(response.body);
+        final table = bs!.body!.table;
+        print(table);
+        final list = <Widget>[];
+        final trs = table!.findAll('tr');
+        for (final tr in trs) {
+          var td = tr.find('td');
+          td = td!.nextSibling;
+          final stop = td!.p!.a!.text;
+          final href = td!.p!.a!.getAttrValue('href');
+          list.add(SimpleDialogOption(
+              onPressed: () {
+                final url = sprintf(URL_FORMAT, [href]);
+                busesFromUrl(url);
+                Navigator.pop(context);
+              },
+              child: Text(stop,
+                style: Theme.of(context).textTheme.bodyLarge!
+                .apply(color: ColorScheme.dark().onBackground),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 2,
+              ),
+          ));
+        }
+        setState(() => _busy = false );
+        showBuses(bs!.body!.h2!.text, list);
+      }
+    }
+
+    catch (e, s) {
+      print(e);
+      print(s);
+    }
+  }
+
+  void doSearch(String value) {
+    if (value.contains(STOP_PATTERN)) {
+      print(value);
+      final url = sprintf(SINGLE_FORMAT, [value]);
+      busesFromUrl(url);
+    }
+
+    else {
+      print(value);
+      final url = sprintf(MULTI_FORMAT, [value]);
+      stopsFromUrl(url);
     }
   }
 
@@ -333,8 +403,5 @@ class _BusAppState extends State<BusApp> {
         );
       }
     );
-  }
-
-  void busesFromStop(String stop) async {
   }
 }
