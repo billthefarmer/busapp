@@ -1,24 +1,22 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:beautiful_soup_dart/beautiful_soup.dart';
 import 'package:latlong_to_osgrid/latlong_to_osgrid.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
+// import 'package:markdown/markdown.dart' as md;
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:latlong2/latlong.dart';
-import 'package:sprintf/sprintf.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:flutter/services.dart';
+import 'package:sprintf/sprintf.dart';
 import 'dart:async';
 
 void main() {
   runApp(
     MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        appBarTheme: AppBarTheme(
-          backgroundColor: ColorScheme.dark().background,
-          foregroundColor: ColorScheme.dark().onBackground,
-        ),
-      ),
+      theme: ThemeData.dark(),
       home: const BusApp(),
     ),
   );
@@ -68,9 +66,9 @@ class _BusAppState extends State<BusApp> {
     _alignPositionOnUpdate = AlignOnUpdate.always;
     _controller = TextEditingController();
     _hasChangedPosition = false;
+    _searching = false;
     _leftText = '';
     _rightText= '';
-    _searching = false;
     _empty = true;
     _busy = false;
   }
@@ -98,18 +96,19 @@ class _BusAppState extends State<BusApp> {
                   setState(() =>
                     _searching = false
                   );
+                  _controller.clear();
                 }
               ),
               trailing: [
                 if (!_empty)
                 IconButton(
-                  icon: const Icon(Icons.close),
+                  icon: const Icon(Icons.clear),
                   onPressed: () {
                     _controller.clear();
                   }
                 ),
                 IconButton(
-                  icon: const Icon(Icons.arrow_forward_ios),
+                  icon: const Icon(Icons.chevron_right),
                   onPressed: () {
                     setState(() =>
                       _searching = false
@@ -147,16 +146,42 @@ class _BusAppState extends State<BusApp> {
               ),
             )
           )
-
           else
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {
-              setState(() =>
-                _searching = true
-              );
-            }
-          )
+          Row(
+            children:
+            [
+              IconButton(
+                icon: const Icon(Icons.search),
+                onPressed: () {
+                  setState(() =>
+                    _searching = true
+                  );
+                }
+              ),
+              IconButton(
+                icon: const Icon(Icons.help_outline),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const Help()),
+                  );
+                }
+              ),
+              IconButton(
+                icon: const Icon(Icons.info_outline),
+                onPressed: () {
+                  showAboutDialog(
+                    context: context,
+                    applicationName: 'BusApp',
+                    applicationVersion: 'Version 1.0',
+                    applicationIcon: Image.asset('images/launch_image.png'),
+                    applicationLegalese: 'Copyright © Bill Farmer' +
+                    '\nLicence GPLv3',
+                  );
+                }
+              ),
+            ],
+          ),
         ],
       ),
       body: FlutterMap(
@@ -188,7 +213,7 @@ class _BusAppState extends State<BusApp> {
               var lng = position.center!.longitude;
               var osref = converter.getOSGBfromDec(lat, lng);
               setState(() =>
-                _leftText = '${osref. letterRef}'
+                _leftText = '${osref.letterRef}'
               );
               setState(() =>
                 _rightText = sprintf('%2.5f, %2.5f', [lat, lng])
@@ -205,13 +230,15 @@ class _BusAppState extends State<BusApp> {
             alignPositionStream: _alignPositionStreamController.stream,
             alignPositionOnUpdate: _alignPositionOnUpdate,
           ),
+          // Text in four corners showing location, copyright
           Align(
             alignment: Alignment.bottomLeft,
             child: Padding(
               padding: const EdgeInsets.all(4),
               child: Text(
                 'flutter_map',
-                style: Theme.of(context).textTheme.bodySmall,
+                style: Theme.of(context).textTheme.bodySmall!
+                .apply(color: Colors.black),
               ),
             ),
           ),
@@ -221,7 +248,8 @@ class _BusAppState extends State<BusApp> {
               padding: const EdgeInsets.all(4),
               child: Text(
                 '© OpenStreetMap contributors',
-                style: Theme.of(context).textTheme.bodySmall,
+                style: Theme.of(context).textTheme.bodySmall!
+                .apply(color: Colors.black),
               ),
             ),
           ),
@@ -230,7 +258,8 @@ class _BusAppState extends State<BusApp> {
             child: Padding(
               padding: const EdgeInsets.all(4),
               child: Text(_leftText,
-                style: Theme.of(context).textTheme.bodySmall,
+                style: Theme.of(context).textTheme.bodySmall!
+                .apply(color: Colors.black),
               ),
             ),
           ),
@@ -239,14 +268,17 @@ class _BusAppState extends State<BusApp> {
             child: Padding(
               padding: const EdgeInsets.all(4),
               child: Text(_rightText,
-                style: Theme.of(context).textTheme.bodySmall,
+                style: Theme.of(context).textTheme.bodySmall!
+                .apply(color: Colors.black),
               ),
             ),
           ),
           if (_busy)
-            Center(
-              child: CircularProgressIndicator(),
+          Center(
+            child: CircularProgressIndicator(
+              color: Colors.indigo
             ),
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -262,13 +294,16 @@ class _BusAppState extends State<BusApp> {
         },
         child: const Icon(
           Icons.my_location,
-          color: Colors.black,
         ),
       ),
     );
   }
 
   void busesFromPoint(TapPosition tapPosition, LatLng point) async {
+    if (_searching) {
+      setState(() => _searching = false);
+      return;
+    }
     setState(() => _busy = true );
     final query = sprintf(QUERY_FORMAT,
       [point.latitude, point.longitude]);
@@ -287,6 +322,7 @@ class _BusAppState extends State<BusApp> {
     }
 
     catch (e, s) {
+      showError(e);
       print(e);
       print(s);
     }
@@ -297,32 +333,39 @@ class _BusAppState extends State<BusApp> {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         final bs = BeautifulSoup(response.body);
+        final title = bs!.body!.h2!.text;
         final table = bs!.body!.table;
         final list = <Widget>[];
         final trs = table!.findAll('tr');
         for (final tr in trs) {
           var td = tr.find('td');
-          final bus = td!.a!.text;
+          final bus = td!.p!.a?.text ?? td!.p!.nextSibling!.text;
+          final href = td!.p!.a?.getAttrValue('href');
           td = td.nextSibling;
           final dest = td!.p!.text;
           list.add(SimpleDialogOption(
               onPressed: () {
+                if (href != null) {
+                  final url = sprintf(URL_FORMAT, [href]);
+                  setState(() => _busy = true );
+                  busesFromUrl(url);
+                }
                 Navigator.pop(context);
               },
               child: Text(sprintf(BUS_FORMAT, [bus, dest]),
                 style: Theme.of(context).textTheme.bodyLarge!
-                .apply(color: ColorScheme.dark().onBackground),
+                  .apply(color: ColorScheme.dark().onBackground),
                 overflow: TextOverflow.ellipsis,
                 maxLines: 2,
               ),
           ));
         }
         setState(() => _busy = false );
-        showBuses(bs!.body!.h2!.text, list);
+        showResults(title, list);
       }
     }
-
     catch (e, s) {
+      showError(e);
       print(e);
       print(s);
     }
@@ -333,55 +376,80 @@ class _BusAppState extends State<BusApp> {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         final bs = BeautifulSoup(response.body);
+        final title = bs!.body!.h2!.text;
         final table = bs!.body!.table;
-        print(table);
         final list = <Widget>[];
         final trs = table!.findAll('tr');
-        for (final tr in trs) {
-          var td = tr.find('td');
-          td = td!.nextSibling;
-          final stop = td!.p!.a!.text;
-          final href = td!.p!.a!.getAttrValue('href');
-          list.add(SimpleDialogOption(
-              onPressed: () {
-                final url = sprintf(URL_FORMAT, [href]);
-                busesFromUrl(url);
-                Navigator.pop(context);
-              },
-              child: Text(stop,
-                style: Theme.of(context).textTheme.bodyLarge!
-                .apply(color: ColorScheme.dark().onBackground),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 2,
-              ),
-          ));
+        if (title.startsWith('Search')) {
+          for (final tr in trs) {
+            var td = tr.find('td');
+            td = td!.nextSibling;
+            final stop = td!.p!.a!.text;
+            final href = td!.p!.a!.getAttrValue('href');
+            list.add(SimpleDialogOption(
+                onPressed: () {
+                  final url = sprintf(URL_FORMAT, [href]);
+                  setState(() => _busy = true );
+                  busesFromUrl(url);
+                  Navigator.pop(context);
+                },
+                child: Text(stop,
+                  style: Theme.of(context).textTheme.bodyLarge!
+                  .apply(color: ColorScheme.dark().onBackground),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 2,
+                ),
+            ));
+          }
+          setState(() => _busy = false );
+          showResults(title, list);
         }
-        setState(() => _busy = false );
-        showBuses(bs!.body!.h2!.text, list);
+        else if (title.startsWith('Locations')) {
+          for (final tr in trs) {
+            var td = tr.find('td')!.nextSibling;
+            final loc = td!.p!.a!.text;
+            final href = td!.p!.a!.getAttrValue('href');
+            list.add(SimpleDialogOption(
+                onPressed: () {
+                  final url = sprintf(URL_FORMAT, [href]);
+                  setState(() => _busy = true );
+                  stopsFromUrl(url);
+                  Navigator.pop(context);
+                },
+                child: Text(loc,
+                  style: Theme.of(context).textTheme.bodyLarge!
+                  .apply(color: ColorScheme.dark().onBackground),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 2,
+                ),
+            ));
+          }
+          setState(() => _busy = false );
+          showResults(title, list);
+        }
       }
     }
-
     catch (e, s) {
+      showError(e);
       print(e);
       print(s);
     }
   }
 
   void doSearch(String value) {
+    if (value.isEmpty)
+      return;
     if (value.contains(STOP_PATTERN)) {
-      print(value);
       final url = sprintf(SINGLE_FORMAT, [value]);
       busesFromUrl(url);
     }
-
     else {
-      print(value);
       final url = sprintf(MULTI_FORMAT, [value]);
       stopsFromUrl(url);
     }
   }
 
-  void showBuses(String title, List<Widget> list) {
+  void showResults(String title, List<Widget> list) {
     showDialog<void>(
       context: context,
       builder: (BuildContext context) {
@@ -403,5 +471,51 @@ class _BusAppState extends State<BusApp> {
         );
       }
     );
+  }
+
+  void showError(Object e) {
+    showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            dialogTheme: DialogTheme.of(context).copyWith(
+              backgroundColor: ColorScheme.dark().background,
+              titleTextStyle: Theme.of(context).textTheme.headlineSmall!
+              .apply(color: ColorScheme.dark().onBackground),
+            ),
+          ),
+          child: AlertDialog(
+            title: Text(e.toString()),
+            actions: [
+              TextButton(
+                child: Text('OK'),
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class Help extends StatelessWidget {
+  const Help({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('BusApp help'),
+      ),
+      body: const Markdown(data: 'Help'),
+    );
+  }
+
+  Future<String> loadAsset() async {
+    return await rootBundle.loadString('assets/help.md');
   }
 }
