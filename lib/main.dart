@@ -56,10 +56,11 @@ class _BusAppState extends State<BusApp> {
   late StreamController<double?> _alignPositionStreamController;
   late AlignOnUpdate _alignPositionOnUpdate;
   late TextEditingController _controller;
-  late bool _hasChangedPosition;
+  late bool _located;
   late String _leftText;
   late String _rightText;
   late bool _searching;
+  late bool _moved;
   late bool _empty;
   late bool _busy;
 
@@ -70,10 +71,11 @@ class _BusAppState extends State<BusApp> {
     _alignPositionStreamController = StreamController<double?>();
     _alignPositionOnUpdate = AlignOnUpdate.always;
     _controller = TextEditingController();
-    _hasChangedPosition = false;
     _searching = false;
+    _located = false;
     _leftText = '';
     _rightText= '';
+    _moved = false;
     _empty = true;
     _busy = false;
   }
@@ -214,9 +216,17 @@ class _BusAppState extends State<BusApp> {
               );
             }
             // Zoom in when located, just once
-            if (!hasGesture && !_hasChangedPosition) {
+            if (!hasGesture && !_located) {
               _alignPositionStreamController.add(18);
-              _hasChangedPosition = true;
+              _located = true;
+            }
+            // Show zoom buttons
+            if (hasGesture) {
+              setState(() => _moved = true);
+              Timer(Duration(seconds: 2), () {
+                  setState(() => _moved = false);
+                }
+              );
             }
             // Show position in top corners
             if (position.center != null) {
@@ -280,6 +290,39 @@ class _BusAppState extends State<BusApp> {
               child: Text(_rightText,
                 style: Theme.of(context).textTheme.bodySmall!
                 .apply(color: Colors.black),
+              ),
+            ),
+          ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: AnimatedOpacity(
+                opacity: _moved ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 500),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.add),
+                      color: Colors.white,
+                      style: ButtonStyle(
+                        backgroundColor: MaterialStatePropertyAll(Colors.blue),
+                      ),
+                      onPressed: () {
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.remove),
+                      color: Colors.white,
+                      style: ButtonStyle(
+                        backgroundColor: MaterialStatePropertyAll(Colors.blue),
+                      ),
+                      onPressed: () {
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
