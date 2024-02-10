@@ -188,7 +188,7 @@ class _BusAppState extends State<BusApp> {
                     applicationVersion: 'Version ${packageInfo.version}',
                     applicationIcon: Image.asset('images/launch_image.png'),
                     applicationLegalese: 'Copyright © Bill Farmer'
-                    '\nLicence GPLv3',
+                    '\nLicence Apache 2',
                   );
                 }
               ),
