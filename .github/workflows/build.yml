@@ -70,5 +70,5 @@ jobs:
         uses: actions/upload-artifact@v3.1.2
         with:
           name: web-build
-          path: example/build/web
+          path: build/web
           if-no-files-found: error
