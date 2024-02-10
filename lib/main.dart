@@ -4,12 +4,12 @@ import 'package:beautiful_soup_dart/beautiful_soup.dart';
 import 'package:latlong_to_osgrid/latlong_to_osgrid.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sprintf/sprintf.dart';
+import 'dart:developer';
 import 'dart:async';
 
 // main
@@ -34,32 +34,33 @@ class BusApp extends StatefulWidget {
 class _BusAppState extends State<BusApp> {
 
   // Formats for urls and results
-  static final MULTI_FORMAT =
-  'https://nextbuses.mobi/WebView/BusStopSearch/BusStopSearchResults' +
+  static const MULTI_FORMAT =
+  'https://nextbuses.mobi/WebView/BusStopSearch/BusStopSearchResults'
   '?id=%s&submit=Search';
-  static final SINGLE_FORMAT =
-  'https://nextbuses.mobi/WebView/BusStopSearch/BusStopSearchResults/' +
+  static const SINGLE_FORMAT =
+  'https://nextbuses.mobi/WebView/BusStopSearch/BusStopSearchResults/'
   '%s?currentPage=0';
-  static final QUERY_FORMAT = 'point(%f,%f)';
-  static final STOP_FORMAT = '%s, %s';
-  static final URL_FORMAT = 'https://nextbuses.mobi%s';
-  static final BUS_FORMAT = '%s: %s';
+  static const QUERY_FORMAT = 'point(%f,%f)';
+  static const URL_FORMAT = 'https://nextbuses.mobi%s';
+  static const BUS_FORMAT = '%s: %s';
 
   // Pattern for bus stop codes, begins with authority code, except Scotland
   static final STOP_PATTERN = RegExp(
-    r'^((nld|man|lin|bou|ahl|her|buc|shr|dvn|rtl|mer|twr|nth|cor|war|ntm|' +
-    r'sta|bfs|nts|cum|sto|blp|wil|che|dor|knt|glo|woc|oxf|brk|chw|wok|' +
-    r'dbs|yny|dur|soa|dby|tel|crm|sot|wsx|lan|esu|lec|suf|esx|nwm|dlo|' +
+    r'^((nld|man|lin|bou|ahl|her|buc|shr|dvn|rtl|mer|twr|nth|cor|war|ntm|'
+    r'sta|bfs|nts|cum|sto|blp|wil|che|dor|knt|glo|woc|oxf|brk|chw|wok|'
+    r'dbs|yny|dur|soa|dby|tel|crm|sot|wsx|lan|esu|lec|suf|esx|nwm|dlo|'
     r'lei|mlt|cej|hal|ham|sur|hrt)[a-z]{5})|[0-9]{8}$');
 
   // State variables
   late StreamController<double?> _alignPositionStreamController;
   late AlignOnUpdate _alignPositionOnUpdate;
   late TextEditingController _controller;
-  late bool _located;
-  late String _leftText;
+  late MapController _mapController;
   late String _rightText;
+  late String _leftText;
   late bool _searching;
+  late bool _located;
+  late Timer _timer;
   late bool _moved;
   late bool _empty;
   late bool _busy;
@@ -69,8 +70,10 @@ class _BusAppState extends State<BusApp> {
   void initState() {
     super.initState();
     _alignPositionStreamController = StreamController<double?>();
+    _timer = Timer(const Duration(seconds: 1), () => {});
     _alignPositionOnUpdate = AlignOnUpdate.always;
     _controller = TextEditingController();
+    _mapController = MapController();
     _searching = false;
     _located = false;
     _leftText = '';
@@ -93,7 +96,7 @@ class _BusAppState extends State<BusApp> {
     final converter = LatLongConverter();
     return Scaffold(
       appBar: AppBar(
-        title: Text('BusApp'),
+        title: const Text('BusApp'),
         actions: [
           // Conditional search bar
           if (_searching)
@@ -184,7 +187,7 @@ class _BusAppState extends State<BusApp> {
                     applicationName: packageInfo.appName,
                     applicationVersion: 'Version ${packageInfo.version}',
                     applicationIcon: Image.asset('images/launch_image.png'),
-                    applicationLegalese: 'Copyright © Bill Farmer' +
+                    applicationLegalese: 'Copyright © Bill Farmer'
                     '\nLicence GPLv3',
                   );
                 }
@@ -195,20 +198,20 @@ class _BusAppState extends State<BusApp> {
       ),
       // Map
       body: FlutterMap(
-        mapController: MapController(),
+        mapController: _mapController,
         options: MapOptions(
-          interactionOptions: InteractionOptions(
+          interactionOptions: const InteractionOptions(
             // No rotation, only works on touch screen anyway
             flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
             ),
             // Centre of GB, possibly
-          initialCenter: LatLng(52.561928, -1.464854),
+          initialCenter: const LatLng(52.561928, -1.464854),
           initialZoom: 6.5,
           // Buses from nearest stop
           onTap: (tapPosition, point) => busesFromPoint(tapPosition, point),
           // Stop following the location marker on the map if user interacted
           // with the map.
-          onPositionChanged: (MapPosition position, bool hasGesture) async {
+          onPositionChanged: (MapPosition position, bool hasGesture) {
             if (hasGesture &&
               _alignPositionOnUpdate != AlignOnUpdate.never) {
               setState(() =>
@@ -222,11 +225,7 @@ class _BusAppState extends State<BusApp> {
             }
             // Show zoom buttons
             if (hasGesture) {
-              setState(() => _moved = true);
-              Timer(Duration(seconds: 2), () {
-                  setState(() => _moved = false);
-                }
-              );
+              showZoomButtons();
             }
             // Show position in top corners
             if (position.center != null) {
@@ -234,7 +233,7 @@ class _BusAppState extends State<BusApp> {
               var lng = position.center!.longitude;
               var osref = converter.getOSGBfromDec(lat, lng);
               setState(() =>
-                _leftText = '${osref.letterRef}'
+                _leftText = osref.letterRef
               );
               setState(() =>
                 _rightText = sprintf('%2.5f, %2.5f', [lat, lng])
@@ -296,7 +295,7 @@ class _BusAppState extends State<BusApp> {
           Align(
             alignment: Alignment.bottomCenter,
             child: Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(20),
               child: AnimatedOpacity(
                 opacity: _moved ? 1.0 : 0.0,
                 duration: const Duration(milliseconds: 500),
@@ -307,18 +306,34 @@ class _BusAppState extends State<BusApp> {
                       icon: const Icon(Icons.add),
                       color: Colors.white,
                       style: ButtonStyle(
-                        backgroundColor: MaterialStatePropertyAll(Colors.blue),
+                        backgroundColor: const MaterialStatePropertyAll(
+                          Colors.indigo),
+                        shape: MaterialStatePropertyAll(
+                          RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
                       ),
                       onPressed: () {
+                        zoomIn();
+                        showZoomButtons();
                       },
                     ),
                     IconButton(
                       icon: const Icon(Icons.remove),
                       color: Colors.white,
                       style: ButtonStyle(
-                        backgroundColor: MaterialStatePropertyAll(Colors.blue),
+                        backgroundColor: const MaterialStatePropertyAll(
+                          Colors.indigo),
+                        shape: MaterialStateProperty.all(
+                          RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
                       ),
                       onPressed: () {
+                        zoomOut();
+                        showZoomButtons();
                       },
                     ),
                   ],
@@ -328,7 +343,7 @@ class _BusAppState extends State<BusApp> {
           ),
           // Show busy
           if (_busy)
-          Center(
+           const Center(
             child: CircularProgressIndicator(
               color: Colors.indigo
             ),
@@ -345,12 +360,37 @@ class _BusAppState extends State<BusApp> {
           // Follow the location marker on the map and zoom the map to
           // level 18.
           _alignPositionStreamController.add(18);
+          setState(() => _moved = false);
         },
         child: const Icon(
           Icons.my_location,
         ),
       ),
     );
+  }
+
+  // showZoomButtons
+  void showZoomButtons() {
+    setState(() => _moved = true);
+    _timer.cancel();
+    _timer = Timer(const Duration(seconds: 5), () {
+        setState(() => _moved = false);
+      }
+    );
+  }
+
+  // zoomIn
+  void zoomIn() {
+    final zoom = _mapController.camera.zoom;
+    final center = _mapController.camera.center;
+    _mapController.move(center, zoom + 0.5);
+  }
+
+  // zoomOut
+  void zoomOut() {
+    final zoom = _mapController.camera.zoom;
+    final center = _mapController.camera.center;
+    _mapController.move(center, zoom - 0.5);
   }
 
   // busesFromPoint
@@ -371,7 +411,7 @@ class _BusAppState extends State<BusApp> {
       var response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         final bs = BeautifulSoup(response.body);
-        final table = bs!.body!.table;
+        final table = bs.body!.table;
         final td = table!.find('td');
         final a = td!.p!.a;
         final href = a!.getAttrValue('href');
@@ -385,8 +425,8 @@ class _BusAppState extends State<BusApp> {
     // Show error dialog
     catch (e, s) {
       showError(e);
-      print(e);
-      print(s);
+      log(e.toString());
+      log(s.toString());
     }
   }
 
@@ -399,17 +439,17 @@ class _BusAppState extends State<BusApp> {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         final bs = BeautifulSoup(response.body);
-        final title = bs!.body!.h2!.text;
-        final table = bs!.body!.table;
+        final title = bs.body!.h2!.text;
+        final table = bs.body!.table;
         final list = <Widget>[];
         final trs = table!.findAll('tr');
         // Create list of buses with urls, if present
         for (final tr in trs) {
           var td = tr.find('td');
           // Conditional bus text
-          final bus = td!.p!.a?.text ?? td!.p!.nextSibling!.text;
+          final bus = td!.p!.a?.text ?? td.p!.nextSibling!.text;
           // Conditional href
-          final href = td!.p!.a?.getAttrValue('href');
+          final href = td.p!.a?.getAttrValue('href');
           td = td.nextSibling;
           // Get destination
           final dest = td!.p!.text;
@@ -428,7 +468,7 @@ class _BusAppState extends State<BusApp> {
               // add dialog text
               child: Text(sprintf(BUS_FORMAT, [bus, dest]),
                 style: Theme.of(context).textTheme.bodyLarge!
-                  .apply(color: ColorScheme.dark().onBackground),
+                  .apply(color: const ColorScheme.dark().onBackground),
                 overflow: TextOverflow.ellipsis,
                 maxLines: 2,
               ),
@@ -441,8 +481,8 @@ class _BusAppState extends State<BusApp> {
     }
     catch (e, s) {
       showError(e);
-      print(e);
-      print(s);
+      log(e.toString());
+      log(s.toString());
     }
   }
 
@@ -454,8 +494,8 @@ class _BusAppState extends State<BusApp> {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         final bs = BeautifulSoup(response.body);
-        final title = bs!.body!.h2!.text;
-        final table = bs!.body!.table;
+        final title = bs.body!.h2!.text;
+        final table = bs.body!.table;
         final list = <Widget>[];
         final trs = table!.findAll('tr');
         // Create list of stops with urls
@@ -464,7 +504,7 @@ class _BusAppState extends State<BusApp> {
             var td = tr.find('td');
             td = td!.nextSibling;
             final stop = td!.p!.a!.text;
-            final href = td!.p!.a!.getAttrValue('href');
+            final href = td.p!.a!.getAttrValue('href');
             list.add(SimpleDialogOption(
                 onPressed: () {
                   final url = sprintf(URL_FORMAT, [href]);
@@ -474,7 +514,7 @@ class _BusAppState extends State<BusApp> {
                 },
                 child: Text(stop,
                   style: Theme.of(context).textTheme.bodyLarge!
-                  .apply(color: ColorScheme.dark().onBackground),
+                  .apply(color: const ColorScheme.dark().onBackground),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 2,
                 ),
@@ -488,7 +528,7 @@ class _BusAppState extends State<BusApp> {
           for (final tr in trs) {
             var td = tr.find('td')!.nextSibling;
             final loc = td!.p!.a!.text;
-            final href = td!.p!.a!.getAttrValue('href');
+            final href = td.p!.a!.getAttrValue('href');
             list.add(SimpleDialogOption(
                 onPressed: () {
                   final url = sprintf(URL_FORMAT, [href]);
@@ -498,7 +538,7 @@ class _BusAppState extends State<BusApp> {
                 },
                 child: Text(loc,
                   style: Theme.of(context).textTheme.bodyLarge!
-                  .apply(color: ColorScheme.dark().onBackground),
+                  .apply(color: const ColorScheme.dark().onBackground),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 2,
                 ),
@@ -511,16 +551,17 @@ class _BusAppState extends State<BusApp> {
     }
     catch (e, s) {
       showError(e);
-      print(e);
-      print(s);
+      log(e.toString());
+      log(s.toString());
     }
   }
 
   // doSearch
   void doSearch(String value) {
     // Check value
-    if (value.isEmpty)
+    if (value.isEmpty) {
       return;
+    }
     // If it's a stop, get buses
     if (value.contains(STOP_PATTERN)) {
       final url = sprintf(SINGLE_FORMAT, [value]);
@@ -542,9 +583,9 @@ class _BusAppState extends State<BusApp> {
         return Theme(
           data: Theme.of(context).copyWith(
             dialogTheme: DialogTheme.of(context).copyWith(
-              backgroundColor: ColorScheme.dark().background,
+              backgroundColor: const ColorScheme.dark().background,
               titleTextStyle: Theme.of(context).textTheme.headlineSmall!
-              .apply(color: ColorScheme.dark().onBackground),
+              .apply(color: const ColorScheme.dark().onBackground),
             ),
           ),
           child: SimpleDialog(
@@ -567,16 +608,16 @@ class _BusAppState extends State<BusApp> {
         return Theme(
           data: Theme.of(context).copyWith(
             dialogTheme: DialogTheme.of(context).copyWith(
-              backgroundColor: ColorScheme.dark().background,
+              backgroundColor: const ColorScheme.dark().background,
               titleTextStyle: Theme.of(context).textTheme.headlineSmall!
-              .apply(color: ColorScheme.dark().onBackground),
+              .apply(color: const ColorScheme.dark().onBackground),
             ),
           ),
           child: AlertDialog(
             title: Text(e.toString()),
             actions: [
               TextButton(
-                child: Text('OK'),
+                child: const Text('OK'),
                 onPressed: () {
                   Navigator.pop(context);
                 },
