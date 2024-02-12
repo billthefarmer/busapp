@@ -51,5 +51,5 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: exe-build
-          path: windowsTemp/WindowsApplication.exe
+          path: windowsTemp/BusAppInstall.exe
           if-no-files-found: error

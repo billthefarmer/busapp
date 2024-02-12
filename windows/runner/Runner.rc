@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "map" "\0"
+            VALUE "CompanyName", "Bill Farmer" "\0"
+            VALUE "FileDescription", "" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "map" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2024 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "map.exe" "\0"
-            VALUE "ProductName", "map" "\0"
+            VALUE "InternalName", "BusApp" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2024 Bill Farmer. All rights reserved." "\0"
+            VALUE "OriginalFilename", "BusApp.exe" "\0"
+            VALUE "ProductName", "BusApp" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

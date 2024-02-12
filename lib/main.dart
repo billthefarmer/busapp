@@ -9,7 +9,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sprintf/sprintf.dart';
-import 'dart:developer';
+import 'dart:io' show Platform;
 import 'dart:async';
 
 // main
@@ -78,7 +78,7 @@ class _BusAppState extends State<BusApp> {
     _located = false;
     _leftText = '';
     _rightText= '';
-    _moved = false;
+    _moved = true;
     _empty = true;
     _busy = false;
   }
@@ -221,6 +221,7 @@ class _BusAppState extends State<BusApp> {
             // Zoom in when located, just once
             if (!hasGesture && !_located) {
               _alignPositionStreamController.add(18);
+              setState(() => _moved = false );
               _located = true;
             }
             // Show zoom buttons
@@ -295,46 +296,61 @@ class _BusAppState extends State<BusApp> {
           Align(
             alignment: Alignment.bottomCenter,
             child: Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.only(
+                bottom: 20),
               child: AnimatedOpacity(
                 opacity: _moved ? 1.0 : 0.0,
                 duration: const Duration(milliseconds: 500),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.add),
-                      color: Colors.white,
-                      style: ButtonStyle(
-                        backgroundColor: const MaterialStatePropertyAll(
-                          Colors.indigo),
-                        shape: MaterialStatePropertyAll(
-                          RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                    Padding(
+                      padding: EdgeInsets.only(
+                        right: Platform.isWindows ? 4 : 0),
+                      child: IconButton(
+                        icon: const Icon(Icons.add),
+                        color: Colors.white,
+                        style: ButtonStyle(
+                          backgroundColor: const MaterialStatePropertyAll(
+                            Colors.indigo),
+                          shape: MaterialStatePropertyAll(
+                            RoundedRectangleBorder(
+                              borderRadius: BorderRadius.only(
+                                topLeft: Radius.circular(8),
+                                bottomLeft: Radius.circular(8),
+                              ),
+                            ),
                           ),
                         ),
+                        onPressed: () {
+                          zoomIn();
+                          showZoomButtons();
+                        },
                       ),
-                      onPressed: () {
-                        zoomIn();
-                        showZoomButtons();
-                      },
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.remove),
-                      color: Colors.white,
-                      style: ButtonStyle(
-                        backgroundColor: const MaterialStatePropertyAll(
-                          Colors.indigo),
-                        shape: MaterialStateProperty.all(
-                          RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                    Padding(
+                      padding: EdgeInsets.only(
+                        left: Platform.isWindows ? 4 : 0),
+                      child: IconButton(
+                        icon: const Icon(Icons.remove),
+                        color: Colors.white,
+                        style: ButtonStyle(
+                          backgroundColor: const MaterialStatePropertyAll(
+                            Colors.indigo),
+                          shape: MaterialStatePropertyAll(
+                            RoundedRectangleBorder(
+                              borderRadius: BorderRadius.only(
+                                topRight: Radius.circular(8),
+                                bottomRight: Radius.circular(8),
+                              ),
+                            ),
                           ),
                         ),
+                        onPressed: () {
+                          zoomOut();
+                          showZoomButtons();
+                        },
                       ),
-                      onPressed: () {
-                        zoomOut();
-                        showZoomButtons();
-                      },
                     ),
                   ],
                 ),
@@ -412,6 +428,12 @@ class _BusAppState extends State<BusApp> {
       if (response.statusCode == 200) {
         final bs = BeautifulSoup(response.body);
         final table = bs.body!.table;
+        if (table?.contents?.isEmpty ?? true) {
+          final title = bs.body!.h2!.text;
+          setState(() => _busy = false );
+          showResults(title, <Widget>[]);
+          return;
+        }
         final td = table!.find('td');
         final a = td!.p!.a;
         final href = a!.getAttrValue('href');
@@ -424,9 +446,9 @@ class _BusAppState extends State<BusApp> {
 
     // Show error dialog
     catch (e, s) {
-      showError(e);
-      log(e.toString());
-      log(s.toString());
+      setState(() => _busy = false );
+      print(e.toString());
+      print(s.toString());
     }
   }
 
@@ -442,6 +464,11 @@ class _BusAppState extends State<BusApp> {
         final title = bs.body!.h2!.text;
         final table = bs.body!.table;
         final list = <Widget>[];
+        if (table?.contents?.isEmpty ?? true) {
+          setState(() => _busy = false );
+          showResults(title, list);
+          return;
+        }
         final trs = table!.findAll('tr');
         // Create list of buses with urls, if present
         for (final tr in trs) {
@@ -480,9 +507,9 @@ class _BusAppState extends State<BusApp> {
       }
     }
     catch (e, s) {
-      showError(e);
-      log(e.toString());
-      log(s.toString());
+      setState(() => _busy = false );
+      print(e.toString());
+      print(s.toString());
     }
   }
 
@@ -497,6 +524,11 @@ class _BusAppState extends State<BusApp> {
         final title = bs.body!.h2!.text;
         final table = bs.body!.table;
         final list = <Widget>[];
+        if (table?.contents?.isEmpty ?? true) {
+          setState(() => _busy = false );
+          showResults(title, list);
+          return;
+        }
         final trs = table!.findAll('tr');
         // Create list of stops with urls
         if (title.startsWith('Search')) {
@@ -550,9 +582,9 @@ class _BusAppState extends State<BusApp> {
       }
     }
     catch (e, s) {
-      showError(e);
-      log(e.toString());
-      log(s.toString());
+      setState(() => _busy = false );
+      print(e.toString());
+      print(s.toString());
     }
   }
 
