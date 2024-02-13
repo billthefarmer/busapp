@@ -315,9 +315,8 @@ class _BusAppState extends State<BusApp> {
                             Colors.indigo),
                           shape: MaterialStatePropertyAll(
                             RoundedRectangleBorder(
-                              borderRadius: BorderRadius.only(
-                                topLeft: Radius.circular(8),
-                                bottomLeft: Radius.circular(8),
+                              borderRadius: BorderRadius.all(
+                                Radius.circular(8),
                               ),
                             ),
                           ),
@@ -339,9 +338,8 @@ class _BusAppState extends State<BusApp> {
                             Colors.indigo),
                           shape: MaterialStatePropertyAll(
                             RoundedRectangleBorder(
-                              borderRadius: BorderRadius.only(
-                                topRight: Radius.circular(8),
-                                bottomRight: Radius.circular(8),
+                              borderRadius: BorderRadius.all(
+                                Radius.circular(8),
                               ),
                             ),
                           ),
