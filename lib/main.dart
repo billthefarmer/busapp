@@ -4,6 +4,7 @@ import 'package:beautiful_soup_dart/beautiful_soup.dart';
 import 'package:latlong_to_osgrid/latlong_to_osgrid.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:flutter/material.dart';
@@ -56,6 +57,7 @@ class _BusAppState extends State<BusApp> {
   late AlignOnUpdate _alignPositionOnUpdate;
   late TextEditingController _controller;
   late MapController _mapController;
+  late String _leftLowerText;
   late String _rightText;
   late String _leftText;
   late bool _searching;
@@ -74,6 +76,7 @@ class _BusAppState extends State<BusApp> {
     _alignPositionOnUpdate = AlignOnUpdate.always;
     _controller = TextEditingController();
     _mapController = MapController();
+    _leftLowerText = '';
     _searching = false;
     _located = false;
     _leftText = '';
@@ -211,7 +214,7 @@ class _BusAppState extends State<BusApp> {
           onTap: (tapPosition, point) => busesFromPoint(tapPosition, point),
           // Stop following the location marker on the map if user interacted
           // with the map.
-          onPositionChanged: (MapPosition position, bool hasGesture) {
+          onPositionChanged: (MapPosition position, bool hasGesture) async {
             if (hasGesture &&
               _alignPositionOnUpdate != AlignOnUpdate.never) {
               setState(() =>
@@ -232,13 +235,23 @@ class _BusAppState extends State<BusApp> {
             if (position.center != null) {
               var lat = position.center!.latitude;
               var lng = position.center!.longitude;
+              setState(() =>
+                _rightText = sprintf('%2.5f, %2.5f', [lat, lng])
+              );
               var osref = converter.getOSGBfromDec(lat, lng);
               setState(() =>
                 _leftText = osref.letterRef
               );
-              setState(() =>
-                _rightText = sprintf('%2.5f, %2.5f', [lat, lng])
-              );
+              if (Platform.isAndroid) {
+                try {
+                  List<Placemark> placemarks = await
+                  placemarkFromCoordinates(lat, lng);
+                  setState(() =>
+                    _leftLowerText = placemarks[0].postalCode!
+                  );
+                }
+                catch (e) {}
+              }
             }
           },
         ),
@@ -277,9 +290,18 @@ class _BusAppState extends State<BusApp> {
             alignment: Alignment.topLeft,
             child: Padding(
               padding: const EdgeInsets.all(4),
-              child: Text(_leftText,
-                style: Theme.of(context).textTheme.bodySmall!
-                .apply(color: Colors.black),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(_leftText,
+                    style: Theme.of(context).textTheme.bodySmall!
+                    .apply(color: Colors.black),
+                  ),
+                  Text(_leftLowerText,
+                    style: Theme.of(context).textTheme.bodySmall!
+                    .apply(color: Colors.black),
+                  ),
+                ],
               ),
             ),
           ),
