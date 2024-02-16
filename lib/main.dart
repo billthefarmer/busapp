@@ -58,11 +58,12 @@ class _BusAppState extends State<BusApp> {
   late TextEditingController _controller;
   late MapController _mapController;
   late String _leftLowerText;
+  late Timer _postcodeTimer;
   late String _rightText;
+  late Timer _zoomTimer;
   late String _leftText;
   late bool _searching;
   late bool _located;
-  late Timer _timer;
   late bool _moved;
   late bool _empty;
   late bool _busy;
@@ -72,7 +73,8 @@ class _BusAppState extends State<BusApp> {
   void initState() {
     super.initState();
     _alignPositionStreamController = StreamController<double?>();
-    _timer = Timer(const Duration(seconds: 1), () => {});
+    _postcodeTimer = Timer(const Duration(seconds: 1), () {});
+    _zoomTimer = Timer(const Duration(seconds: 1), () {});
     _alignPositionOnUpdate = AlignOnUpdate.always;
     _controller = TextEditingController();
     _mapController = MapController();
@@ -214,7 +216,7 @@ class _BusAppState extends State<BusApp> {
           onTap: (tapPosition, point) => busesFromPoint(tapPosition, point),
           // Stop following the location marker on the map if user interacted
           // with the map.
-          onPositionChanged: (MapPosition position, bool hasGesture) async {
+          onPositionChanged: (MapPosition position, bool hasGesture) {
             if (hasGesture &&
               _alignPositionOnUpdate != AlignOnUpdate.never) {
               setState(() =>
@@ -242,16 +244,7 @@ class _BusAppState extends State<BusApp> {
               setState(() =>
                 _leftText = osref.letterRef
               );
-              if (Platform.isAndroid) {
-                try {
-                  List<Placemark> placemarks = await
-                  placemarkFromCoordinates(lat, lng);
-                  setState(() =>
-                    _leftLowerText = placemarks[0].postalCode!
-                  );
-                }
-                catch (e) {}
-              }
+              showPostcode(lat, lng);
             }
           },
         ),
@@ -405,11 +398,28 @@ class _BusAppState extends State<BusApp> {
     );
   }
 
+  void showPostcode(double lat, double lng) {
+    if (Platform.isAndroid) {
+      _postcodeTimer.cancel();
+      _postcodeTimer = Timer(const Duration(milliseconds: 100), () async {
+          try {
+            List<Placemark> placemarks = await
+            placemarkFromCoordinates(lat, lng);
+            setState(() =>
+              _leftLowerText = placemarks[0].postalCode!
+            );
+          }
+          catch (e) {}
+        }
+      );
+    }
+  }
+
   // showZoomButtons
   void showZoomButtons() {
     setState(() => _moved = true);
-    _timer.cancel();
-    _timer = Timer(const Duration(seconds: 5), () {
+    _zoomTimer.cancel();
+    _zoomTimer = Timer(const Duration(seconds: 5), () {
         setState(() => _moved = false);
       }
     );
