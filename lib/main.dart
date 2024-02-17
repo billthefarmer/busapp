@@ -321,7 +321,7 @@ class _BusAppState extends State<BusApp> {
                   children: [
                     Padding(
                       padding: EdgeInsets.only(
-                        right: Platform.isWindows ? 4 : 0),
+                        right: Platform.isWindows || Platform.isLinux ? 4 : 0),
                       child: IconButton(
                         icon: const Icon(Icons.add),
                         color: Colors.white,
@@ -344,7 +344,7 @@ class _BusAppState extends State<BusApp> {
                     ),
                     Padding(
                       padding: EdgeInsets.only(
-                        left: Platform.isWindows ? 4 : 0),
+                        left: Platform.isWindows || Platform.isLinux ? 4 : 0),
                       child: IconButton(
                         icon: const Icon(Icons.remove),
                         color: Colors.white,
