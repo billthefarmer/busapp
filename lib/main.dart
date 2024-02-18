@@ -187,6 +187,7 @@ class _BusAppState extends State<BusApp> {
                 icon: const Icon(Icons.info_outline),
                 onPressed: () async {
                   PackageInfo packageInfo = await PackageInfo.fromPlatform();
+                  if (!context.mounted) return;
                   showAboutDialog(
                     context: context,
                     applicationName: packageInfo.appName,
@@ -319,51 +320,37 @@ class _BusAppState extends State<BusApp> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Padding(
-                      padding: EdgeInsets.only(
-                        right: Platform.isWindows || Platform.isLinux ? 4 : 0),
-                      child: IconButton(
-                        icon: const Icon(Icons.add),
-                        color: Colors.white,
-                        style: ButtonStyle(
-                          backgroundColor: const MaterialStatePropertyAll(
-                            Colors.indigo),
-                          shape: MaterialStatePropertyAll(
-                            RoundedRectangleBorder(
-                              borderRadius: BorderRadius.all(
-                                Radius.circular(8),
-                              ),
-                            ),
-                          ),
+                    IconButton(
+                      icon: const Icon(Icons.add),
+                      color: Colors.white,
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.indigo,
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(8)),
                         ),
-                        onPressed: () {
-                          zoomIn();
-                          showZoomButtons();
-                        },
+                        padding: EdgeInsets.zero,
+                        tapTargetSize: MaterialTapTargetSize.padded,
                       ),
+                      onPressed: () {
+                        zoomIn();
+                        showZoomButtons();
+                      },
                     ),
-                    Padding(
-                      padding: EdgeInsets.only(
-                        left: Platform.isWindows || Platform.isLinux ? 4 : 0),
-                      child: IconButton(
-                        icon: const Icon(Icons.remove),
-                        color: Colors.white,
-                        style: ButtonStyle(
-                          backgroundColor: const MaterialStatePropertyAll(
-                            Colors.indigo),
-                          shape: MaterialStatePropertyAll(
-                            RoundedRectangleBorder(
-                              borderRadius: BorderRadius.all(
-                                Radius.circular(8),
-                              ),
-                            ),
-                          ),
+                    IconButton(
+                      icon: const Icon(Icons.remove),
+                      color: Colors.white,
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.indigo,
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(8)),
                         ),
-                        onPressed: () {
-                          zoomOut();
-                          showZoomButtons();
-                        },
+                        padding: EdgeInsets.zero,
+                        tapTargetSize: MaterialTapTargetSize.padded,
                       ),
+                      onPressed: () {
+                        zoomOut();
+                        showZoomButtons();
+                      },
                     ),
                   ],
                 ),
@@ -455,10 +442,11 @@ class _BusAppState extends State<BusApp> {
     // Get response and parse first stop in list
     try {
       var response = await http.get(Uri.parse(url));
+      if (!context.mounted) return;
       if (response.statusCode == 200) {
         final bs = BeautifulSoup(response.body);
         final table = bs.body!.table;
-        if (table?.contents?.isEmpty ?? true) {
+        if (table?.contents.isEmpty ?? true) {
           final title = bs.body!.h2!.text;
           setState(() => _busy = false );
           showResults(title, <Widget>[]);
@@ -494,7 +482,7 @@ class _BusAppState extends State<BusApp> {
         final title = bs.body!.h2!.text;
         final table = bs.body!.table;
         final list = <Widget>[];
-        if (table?.contents?.isEmpty ?? true) {
+        if (table?.contents.isEmpty ?? true) {
           setState(() => _busy = false );
           showResults(title, list);
           return;
@@ -511,6 +499,7 @@ class _BusAppState extends State<BusApp> {
           // Get destination
           final dest = td!.p!.text;
           // Add to list
+          if (!context.mounted) return;
           list.add(SimpleDialogOption(
               onPressed: () {
                 // Add link if href
@@ -549,12 +538,13 @@ class _BusAppState extends State<BusApp> {
     // Get response and parse stops
     try {
       final response = await http.get(Uri.parse(url));
+      if (!context.mounted) return;
       if (response.statusCode == 200) {
         final bs = BeautifulSoup(response.body);
         final title = bs.body!.h2!.text;
         final table = bs.body!.table;
         final list = <Widget>[];
-        if (table?.contents?.isEmpty ?? true) {
+        if (table?.contents.isEmpty ?? true) {
           setState(() => _busy = false );
           showResults(title, list);
           return;
