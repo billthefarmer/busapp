@@ -396,7 +396,7 @@ class _BusAppState extends State<BusApp> {
               _leftLowerText = placemarks[0].postalCode!
             );
           }
-          catch (e) {}
+          catch (e) { /* Panic */ }
         }
       );
     }
@@ -465,8 +465,8 @@ class _BusAppState extends State<BusApp> {
     // Show error dialog
     catch (e, s) {
       setState(() => _busy = false );
-      print(e.toString());
-      print(s.toString());
+      debugPrint(e.toString());
+      debugPrint(s.toString());
     }
   }
 
@@ -527,8 +527,8 @@ class _BusAppState extends State<BusApp> {
     }
     catch (e, s) {
       setState(() => _busy = false );
-      print(e.toString());
-      print(s.toString());
+      debugPrint(e.toString());
+      debugPrint(s.toString());
     }
   }
 
@@ -603,8 +603,8 @@ class _BusAppState extends State<BusApp> {
     }
     catch (e, s) {
       setState(() => _busy = false );
-      print(e.toString());
-      print(s.toString());
+      debugPrint(e.toString());
+      debugPrint(s.toString());
     }
   }
 
