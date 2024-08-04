@@ -151,10 +151,10 @@ class _BusAppState extends State<BusApp> {
                 doSearch(value);
                 _controller.clear();
               },
-              textStyle: MaterialStatePropertyAll(
+              textStyle: WidgetStatePropertyAll(
                 Theme.of(context).textTheme.bodyLarge
               ),
-              hintStyle: MaterialStatePropertyAll(
+              hintStyle: WidgetStatePropertyAll(
                 Theme.of(context).textTheme.bodyLarge!
                 .apply(color: Colors.grey)
               ),
@@ -514,7 +514,7 @@ class _BusAppState extends State<BusApp> {
               // add dialog text
               child: Text(sprintf(BUS_FORMAT, [bus, dest]),
                 style: Theme.of(context).textTheme.bodyLarge!
-                  .apply(color: const ColorScheme.dark().onBackground),
+                  .apply(color: const ColorScheme.dark().onSurface),
                 overflow: TextOverflow.ellipsis,
                 maxLines: 2,
               ),
@@ -566,7 +566,7 @@ class _BusAppState extends State<BusApp> {
                 },
                 child: Text(stop,
                   style: Theme.of(context).textTheme.bodyLarge!
-                  .apply(color: const ColorScheme.dark().onBackground),
+                  .apply(color: const ColorScheme.dark().onSurface),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 2,
                 ),
@@ -590,7 +590,7 @@ class _BusAppState extends State<BusApp> {
                 },
                 child: Text(loc,
                   style: Theme.of(context).textTheme.bodyLarge!
-                  .apply(color: const ColorScheme.dark().onBackground),
+                  .apply(color: const ColorScheme.dark().onSurface),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 2,
                 ),
@@ -635,9 +635,9 @@ class _BusAppState extends State<BusApp> {
         return Theme(
           data: Theme.of(context).copyWith(
             dialogTheme: DialogTheme.of(context).copyWith(
-              backgroundColor: const ColorScheme.dark().background,
+              backgroundColor: const ColorScheme.dark().surface,
               titleTextStyle: Theme.of(context).textTheme.headlineSmall!
-              .apply(color: const ColorScheme.dark().onBackground),
+              .apply(color: const ColorScheme.dark().onSurface),
             ),
           ),
           child: SimpleDialog(
@@ -660,9 +660,9 @@ class _BusAppState extends State<BusApp> {
         return Theme(
           data: Theme.of(context).copyWith(
             dialogTheme: DialogTheme.of(context).copyWith(
-              backgroundColor: const ColorScheme.dark().background,
+              backgroundColor: const ColorScheme.dark().surface,
               titleTextStyle: Theme.of(context).textTheme.headlineSmall!
-              .apply(color: const ColorScheme.dark().onBackground),
+              .apply(color: const ColorScheme.dark().onSurface),
             ),
           ),
           child: AlertDialog(

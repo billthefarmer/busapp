@@ -9,7 +9,7 @@ on:
 
 jobs:
   build-android:
-    name: "Build Android App"
+    name: "Build android app"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -33,7 +33,7 @@ jobs:
           if-no-files-found: error
     
   build-windows:
-    name: "Build Windows App"
+    name: "Build Windows app"
     runs-on: windows-latest
     steps:
       - name: Checkout Repository
@@ -55,7 +55,7 @@ jobs:
           if-no-files-found: error
 
   build-linux:
-    name: "Build linux app"
+    name: "Build Linux app"
     runs-on: ubuntu-latest
     steps:
       - name: Clone repository
