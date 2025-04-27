@@ -217,7 +217,7 @@ class _BusAppState extends State<BusApp> {
           onTap: (tapPosition, point) => busesFromPoint(tapPosition, point),
           // Stop following the location marker on the map if user interacted
           // with the map.
-          onPositionChanged: (MapPosition position, bool hasGesture) {
+          onPositionChanged: (MapCamera camera, bool hasGesture) {
             if (hasGesture &&
               _alignPositionOnUpdate != AlignOnUpdate.never) {
               setState(() =>
@@ -235,9 +235,9 @@ class _BusAppState extends State<BusApp> {
               showZoomButtons();
             }
             // Show position in top corners
-            if (position.center != null) {
-              var lat = position.center!.latitude;
-              var lng = position.center!.longitude;
+            if (camera.center != null) {
+              var lat = camera.center!.latitude;
+              var lng = camera.center!.longitude;
               setState(() =>
                 _rightText = sprintf('%2.5f, %2.5f', [lat, lng])
               );
